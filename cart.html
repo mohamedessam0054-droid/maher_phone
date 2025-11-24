@@ -68,5 +68,83 @@ loadCart();
 
 </body>
 
-</html>
+</html><script>
+// توليد UUID بسيط
+function genId() {
+  return 'id-' + Date.now() + '-' + Math.random().toString(36).slice(2,9);
+}
+let guestId = localStorage.getItem('guestId');
+if (!guestId) {
+  guestId = genId();
+  localStorage.setItem('guestId', guestId);
+}
+
+// تحميل السلة من localStorage
+function getCart() {
+  return JSON.parse(localStorage.getItem('cart-'+guestId) || '[]');
+}
+function saveCart(items) {
+  localStorage.setItem('cart-'+guestId, JSON.stringify(items));
+}
+
+// إضافة منتج للسلة (مثال)
+function addToCart(product) {
+  const cart = getCart();
+  // product = {id, name, price, qty}
+  const found = cart.find(p => p.id === product.id);
+  if (found) found.qty += product.qty;
+  else cart.push(product);
+  saveCart(cart);
+  renderCart();
+}
+
+// عرض السلة في الصفحة
+function renderCart() {
+  const cart = getCart();
+  const container = document.getElementById('cart-items'); // ضيف عنصر بالـ id دا في cart.html
+  if(!container) return;
+  container.innerHTML = '';
+  cart.forEach(item => {
+    const el = document.createElement('div');
+    el.innerText = ${item.name} - ${item.qty} × ${item.price};
+    container.appendChild(el);
+  });
+}
+
+// Checkout: رفع السلة وبيانات العميل لـ Firestore
+async function checkout(name, phone, address) {
+  const cart = getCart();
+  if (!cart.length) { alert('السلة فاضية'); return; }
+  const docRef = db.collection('carts').doc(guestId);
+  await docRef.set({
+    guestId,
+    items: cart,
+    name,
+    phone,
+    address,
+    status: 'new',
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+  // اختياري: مسح السلة محليًا بعد الطلب
+  localStorage.removeItem('cart-'+guestId);
+  alert('تم إرسال الطلب! هنتواصل معاك قريبا');
+  renderCart();
+}
+
+// مثال: ربط فورم الـ checkout بزرار
+document.addEventListener('DOMContentLoaded', () => {
+  renderCart();
+  const checkoutForm = document.getElementById('checkout-form');
+  if (checkoutForm) {
+    checkoutForm.addEventListener('submit', (e)=>{
+      e.preventDefault();
+      const name = checkoutForm.querySelector('[name=name]').value;
+      const phone = checkoutForm.querySelector('[name=phone]').value;
+      const address = checkoutForm.querySelector('[name=address]').value;
+      checkout(name, phone, address).catch(err => { console.error(err); alert('حصل خطأ'); });
+    });
+  }
+});
+</script>
+
 
