@@ -21,7 +21,52 @@
   };
   firebase.initializeApp(firebaseConfig);
   const db = firebase.firestore();
+</script><script>
+async function loadOrders() {
+  const list = document.getElementById('orders-list');
+  list.innerHTML = 'جارٍ التحميل...';
+  const snap = await db.collection('carts').orderBy('createdAt','desc').get();
+  list.innerHTML = '';
+  snap.forEach(doc => {
+    const data = doc.data();
+    const el = document.createElement('div');
+    el.className = 'order';
+    el.innerHTML = `
+      <strong>${data.name || 'زائر'}</strong> — ${data.phone || ''} — ${data.address || ''} <br/>
+      <small>id: ${data.guestId} — ${data.createdAt ? data.createdAt.toDate() : ''}</small>
+      <div>
+        <button onclick="viewOrder('${doc.id}')">عرض السلة</button>
+        <button onclick="setStatus('${doc.id}','processing')">وضع قيد التنفيذ</button>
+        <button onclick="setStatus('${doc.id}','done')">تم</button>
+      </div>
+      <hr/>
+    `;
+    list.appendChild(el);
+  });
+}
+
+window.viewOrder = async function(id) {
+  const doc = await db.collection('carts').doc(id).get();
+  if (!doc.exists) return alert('مش لاقي الطلب');
+  const data = doc.data();
+  let html = <h3>طلب ${data.name || 'زائر'}</h3><p>هاتف: ${data.phone}<br/>عنوان: ${data.address}</p><ul>;
+  data.items.forEach(i => { html += <li>${i.name} — ${i.qty} × ${i.price}</li>; });
+  html += </ul><p>حالة: ${data.status || 'new'}</p>;
+  // تقدر تغير طريقة العرض (مودال أو نافذة جديدة)
+  const w = window.open('', '_blank');
+  w.document.write(html);
+}
+
+window.setStatus = async function(id, status) {
+  await db.collection('carts').doc(id).update({status});
+  alert('تم تحديث الحالة إلى ' + status);
+  loadOrders();
+}
+
+document.addEventListener('DOMContentLoaded', loadOrders);
 </script>
+
+<div id="orders-list">لا توجد طلبات</div>
 <body>
 
 <nav class="navbar navbar-dark bg-dark p-3">
@@ -144,4 +189,5 @@ function resetForm() {
 </body>
 
 </html>
+
 
