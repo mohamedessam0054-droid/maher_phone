@@ -17,7 +17,16 @@
   async function loadOrders(){
     const list=document.getElementById('orders-list');
     list.innerHTML='جارٍ التحميل...';
-    const snap=await db.collection('carts').orderBy('createdAt','desc').get();
+  let snap;
+try {
+  snap = await db.collection('carts')
+    .orderBy('createdAt', 'desc')
+    .get();
+} catch (e) {
+  document.getElementById('orders-list').innerHTML =
+    '❌ خطأ: تأكد إن كل الطلبات فيها createdAt وإن قواعد Firestore تسمح بالقراءة.<br><br>' + e;
+  return;
+}
     list.innerHTML='';
     snap.forEach(doc=>{
       const data=doc.data();
@@ -54,4 +63,5 @@
 </script>
 </body>
 </html>
+
 
