@@ -1,193 +1,57 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html>
 <head>
-<meta charset="UTF-8">
-<title>لوحة تحكم - ماهر فون</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
-<style>
-    body { background: #f8f9fa; }
-    .product-img { height: 100px; object-fit: contain; }
-</style>
-</head><!-- Firebase SDKs -->
+<title>Admin Panel</title>
+</head>
+<body>
+<h1>لوحة التحكم - الطلبات</h1>
+<div id="orders-list">جارٍ التحميل...</div>
+
 <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-firestore-compat.js"></script>
 <script>
-  const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_AUTH_DOMAIN",
-    projectId: "YOUR_PROJECT_ID",
-    // ... باقي القيم
-  };
+  const firebaseConfig = {apiKey:"AIzaSyBt90XB3t9_MLH8-73wcQpE7fm65Le06FE",authDomain:"maher-phone.firebaseapp.com",projectId:"maher-phone",storageBucket:"maher-phone.firebasestorage.app",messagingSenderId:"759903479842",appId:"1:759903479842:web:25c32cd6034b413dc4027b",measurementId:"G-YV7TS3LDDW"};
   firebase.initializeApp(firebaseConfig);
   const db = firebase.firestore();
-</script><script>
-async function loadOrders() {
-  const list = document.getElementById('orders-list');
-  list.innerHTML = 'جارٍ التحميل...';
-  const snap = await db.collection('carts').orderBy('createdAt','desc').get();
-  list.innerHTML = '';
-  snap.forEach(doc => {
-    const data = doc.data();
-    const el = document.createElement('div');
-    el.className = 'order';
-    el.innerHTML = `
-      <strong>${data.name || 'زائر'}</strong> — ${data.phone || ''} — ${data.address || ''} <br/>
-      <small>id: ${data.guestId} — ${data.createdAt ? data.createdAt.toDate() : ''}</small>
-      <div>
-        <button onclick="viewOrder('${doc.id}')">عرض السلة</button>
-        <button onclick="setStatus('${doc.id}','processing')">وضع قيد التنفيذ</button>
-        <button onclick="setStatus('${doc.id}','done')">تم</button>
-      </div>
-      <hr/>
-    `;
-    list.appendChild(el);
-  });
-}
 
-window.viewOrder = async function(id) {
-  const doc = await db.collection('carts').doc(id).get();
-  if (!doc.exists) return alert('مش لاقي الطلب');
-  const data = doc.data();
-  let html = <h3>طلب ${data.name || 'زائر'}</h3><p>هاتف: ${data.phone}<br/>عنوان: ${data.address}</p><ul>;
-  data.items.forEach(i => { html += <li>${i.name} — ${i.qty} × ${i.price}</li>; });
-  html += </ul><p>حالة: ${data.status || 'new'}</p>;
-  // تقدر تغير طريقة العرض (مودال أو نافذة جديدة)
-  const w = window.open('', '_blank');
-  w.document.write(html);
-}
-
-window.setStatus = async function(id, status) {
-  await db.collection('carts').doc(id).update({status});
-  alert('تم تحديث الحالة إلى ' + status);
-  loadOrders();
-}
-
-document.addEventListener('DOMContentLoaded', loadOrders);
-</script>
-
-<div id="orders-list">لا توجد طلبات</div>
-<body>
-
-<nav class="navbar navbar-dark bg-dark p-3">
-    <div class="container d-flex justify-content-between">
-        <a class="navbar-brand" href="index.html">🔧 لوحة تحكم - ماهر فون</a>
+  async function loadOrders(){
+    const list=document.getElementById('orders-list');
+    list.innerHTML='جارٍ التحميل...';
+    const snap=await db.collection('carts').orderBy('createdAt','desc').get();
+    list.innerHTML='';
+    snap.forEach(doc=>{
+      const data=doc.data();
+      const el=document.createElement('div');
+      el.className='order';
+      el.innerHTML=`<strong>${data.name || 'زائر'}</strong> — ${data.phone || ''} — ${data.address || ''} <br/>
+        <small>id: ${data.guestId} — ${data.createdAt ? data.createdAt.toDate() : ''}</small>
         <div>
-            <button class="btn btn-outline-light me-2" onclick="location.href='products.html'">عرض المتجر</button>
-            <button class="btn btn-light" onclick="location.href='cart.html'">🛒 السلة</button>
-        </div>
-    </div>
-</nav>
-
-<div class="container mt-4">
-<div id="authArea" class="card p-4">
-<h4>تسجيل الدخول للإدارة</h4>
-<p>ادخل كلمة المرور لإظهار أدوات الإدارة.</p>
-<div class="row g-2">
-<div class="col-md-6"><input id="adminPass" class="form-control" type="password" placeholder="كلمة المرور"></div>
-<div class="col-md-6"><button class="btn btn-primary" onclick="login()">دخول</button></div>
-</div>
-<small class="text-muted mt-2 d-block">كلمة المرور الافتراضية: <strong></strong></small>
-</div>
-
-<div id="adminPanel" class="mt-4" style="display:none;">
-<div class="card p-3 mb-3">
-<h5>إضافة / تعديل منتج</h5>
-<input id="prodId" type="hidden">
-<div class="row g-2">
-<div class="col-md-4"><input id="prodName" class="form-control" placeholder="اسم المنتج"></div>
-<div class="col-md-2"><input id="prodPrice" type="number" class="form-control" placeholder="السعر"></div>
-<div class="col-md-4"><input id="prodImg" class="form-control" placeholder="رابط الصورة"></div>
-<div class="col-md-2"><input id="prodCat" class="form-control" placeholder="القسم"></div>
-</div>
-<div class="mt-2">
-<button class="btn btn-success" onclick="saveProduct()">حفظ المنتج</button>
-<button class="btn btn-secondary" onclick="resetForm()">مسح الحقول</button>
-</div>
-</div>
-
-<div class="card p-3">
-<h5>قائمة المنتجات</h5>
-<div id="adminProducts" class="row g-3 mt-2"></div>
-</div>
-</div>
-</div>
-
-<script>
-const ADMIN_PASS = 'maher123';
-function getProducts() { let p = JSON.parse(localStorage.getItem('products')); return p && Array.isArray(p)?p:[]; }
-function saveProducts(p) { localStorage.setItem('products', JSON.stringify(p)); window.dispatchEvent(new Event('storage')); }
-function cryptoRandomId() { return 'id-'+Math.random().toString(36).slice(2,9); }
-
-function login() {
-    if(document.getElementById('adminPass').value === ADMIN_PASS){
-        document.getElementById('authArea').style.display='none';
-        document.getElementById('adminPanel').style.display='block';
-        renderAdminProducts();
-    } else { alert('كلمة المرور خطأ'); }
-}
-
-function renderAdminProducts() {
-    let products = getProducts();
-    let container = document.getElementById('adminProducts'); container.innerHTML='';
-    if(!products.length) { container.innerHTML='<div class="alert alert-info">لا توجد منتجات بعد.</div>'; return; }
-    products.forEach(prod => {
-        container.innerHTML += `
-        <div class="col-md-4">
-        <div class="card p-2">
-        <div class="d-flex gap-3">
-        <img src="${prod.img}" class="product-img">
-        <div>
-        <h6>${prod.name}</h6>
-        <p class="mb-1 text-danger fw-bold">${prod.price.toLocaleString()} جنيه</p>
-        <p class="mb-1"><small>القسم: ${prod.category||'عام'}</small></p>
-        <div class="mt-2">
-            <button class="btn btn-sm btn-primary" onclick="editProduct('${prod.id}')">تعديل</button>
-            <button class="btn btn-sm btn-danger" onclick="deleteProduct('${prod.id}')">حذف</button>
-        </div></div></div></div></div>
-        `;
+          <button onclick="viewOrder('${doc.id}')">عرض السلة</button>
+          <button onclick="setStatus('${doc.id}','processing')">قيد التنفيذ</button>
+          <button onclick="setStatus('${doc.id}','done')">تم</button>
+        </div><hr/>`;
+      list.appendChild(el);
     });
-}
+  }
 
-function saveProduct() {
-    let id=document.getElementById('prodId').value, name=document.getElementById('prodName').value.trim();
-    let price=Number(document.getElementById('prodPrice').value);
-    let img=document.getElementById('prodImg').value.trim()||'https://via.placeholder.com/300x300?text=No+Image';
-    let cat=document.getElementById('prodCat').value.trim();
-    if(!name||!price) return alert('اكتب اسم وسعر المنتج');
-    let products=getProducts();
-    if(id){ let idx=products.findIndex(p=>p.id===id); if(idx>-1){ products[idx]={id,name,price,img,category:cat}; } }
-    else products.unshift({id:cryptoRandomId(),name,price,img,category:cat});
-    saveProducts(products); resetForm(); renderAdminProducts(); alert('تم الحفظ بنجاح');
-}
+  window.viewOrder=async function(id){
+    const doc=await db.collection('carts').doc(id).get();
+    if(!doc.exists)return alert('مش لاقي الطلب');
+    const data=doc.data();
+    let html=`<h3>طلب ${data.name || 'زائر'}</h3><p>هاتف: ${data.phone}<br/>عنوان: ${data.address}</p><ul>`;
+    data.items.forEach(i=>{html+=`<li>${i.name} — ${i.qty} × ${i.price}</li>`;});
+    html+='</ul><p>حالة: '+(data.status||'new')+'</p>';
+    const w=window.open('', '_blank'); w.document.write(html);
+  }
 
-function editProduct(id) {
-    let p=getProducts().find(x=>x.id===id); if(!p) return alert('المنتج غير موجود');
-    document.getElementById('prodId').value=p.id;
-    document.getElementById('prodName').value=p.name;
-    document.getElementById('prodPrice').value=p.price;
-    document.getElementById('prodImg').value=p.img;
-    document.getElementById('prodCat').value=p.category||'';
-    window.scrollTo({top:0,behavior:'smooth'});
-}
+  window.setStatus=async function(id,status){
+    await db.collection('carts').doc(id).update({status});
+    alert('تم تحديث الحالة إلى '+status);
+    loadOrders();
+  }
 
-function deleteProduct(id) {
-    if(!confirm('هل تريد حذف المنتج نهائيًا؟')) return;
-    let products=getProducts().filter(p=>p.id!==id);
-    saveProducts(products); renderAdminProducts();
-}
-
-function resetForm() {
-    document.getElementById('prodId').value='';
-    document.getElementById('prodName').value='';
-    document.getElementById('prodPrice').value='';
-    document.getElementById('prodImg').value='';
-    document.getElementById('prodCat').value='';
-}
+  document.addEventListener('DOMContentLoaded',loadOrders);
 </script>
-
 </body>
-
 </html>
-
 
