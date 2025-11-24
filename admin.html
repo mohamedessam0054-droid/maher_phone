@@ -9,7 +9,19 @@
     body { background: #f8f9fa; }
     .product-img { height: 100px; object-fit: contain; }
 </style>
-</head>
+</head><!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-firestore-compat.js"></script>
+<script>
+  const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_AUTH_DOMAIN",
+    projectId: "YOUR_PROJECT_ID",
+    // ... باقي القيم
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+</script>
 <body>
 
 <nav class="navbar navbar-dark bg-dark p-3">
@@ -132,3 +144,4 @@ function resetForm() {
 </body>
 
 </html>
+
