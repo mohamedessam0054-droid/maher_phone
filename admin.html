@@ -1,100 +1,164 @@
 <!DOCTYPE html>
-<html>
+<html lang="ar">
 <head>
-<title>Admin Panel</title>
+  <meta charset="UTF-8">
+  <title>لوحة تحكم الطلبات</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; direction: rtl; }
+    h1 { margin-bottom: 10px; }
+    .counters { margin-bottom: 20px; }
+    .counters span { margin-right: 15px; font-weight: bold; }
+    .filter { margin-bottom: 20px; }
+    .order { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; }
+    .order div { margin-bottom: 5px; }
+    button { padding: 5px 10px; margin-right: 5px; cursor: pointer; }
+  </style>
 </head>
 <body>
-<h1>لوحة التحكم - الطلبات</h1>
-<div id="orders-list">جارٍ التحميل...</div>
 
-<!-- Firebase compat -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.6.1/firebase-app-compat.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.6.1/firebase-firestore-compat.min.js"></script>
+<h1>لوحة التحكم - الطلبات</h1>
+
+<div class="counters">
+  <span id="total-count">الكل: 0</span>
+  <span id="new-count">جديد: 0</span>
+  <span id="ordered-count">تم الطلب: 0</span>
+</div>
+
+<div class="filter">
+  <label>فلتر حسب الحالة: </label>
+  <select id="status-filter">
+    <option value="all">الكل</option>
+    <option value="new">جديد</option>
+    <option value="ordered">تم الطلب</option>
+  </select>
+</div>
+
+<div id="orders-list">جارٍ تحميل الطلبات...</div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-firestore-compat.js"></script>
 
 <script>
-// إعداد Firebase (مرة واحدة فقط)
-const firebaseConfig = {
-  apiKey: "AIzaSyBt90XB3t9_MLH8-73wcQpE7fm65Le06FE",
-  authDomain: "maher-phone.firebaseapp.com",
-  projectId: "maher-phone",
-  storageBucket: "maher-phone.firebasestorage.app",
-  messagingSenderId: "759903680635",
-  appId: "1:759903680635:web:xxxxxxxxxxxxxxx"
-};
+  // ======== Firebase Config ========
+  const firebaseConfig = {
+    apiKey: "AIzaSyBt90XB3t9_MLH8-73wcQpE7fm65Le06FE",
+    authDomain: "maher-phone.firebaseapp.com",
+    projectId: "maher-phone",
+    storageBucket: "maher-phone.firebasestorage.app",
+    messagingSenderId: "759903479842",
+    appId: "1:759903479842:web:25c32cd6034b413dc4027b",
+    measurementId: "G-YV7TS3LDDW"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
 
-// تشغيل Firebase مرة واحدة فقط
-firebase.initializeApp(firebaseConfig);
+  let currentFilter = 'all';
 
-// Firestore
-const db = firebase.firestore();
+  // ======== Load Orders ========
+  async function loadOrders(filter='all') {
+    currentFilter = filter;
+    const container = document.getElementById('orders-list');
+    container.innerHTML = '';
+    try {
+      let query = db.collection('carts').orderBy('createdAt','desc');
+      if(filter !== 'all') query = query.where('status','==',filter);
 
-// تحميل الطلبات
-async function loadOrders() {
-  const list = document.getElementById('orders-list');
-  list.innerHTML = 'جارٍ التحميل...';
+      const snapshot = await query.get();
+      if(snapshot.empty){
+        container.innerText = 'لا توجد طلبات حالياً';
+        updateCounters([]);
+        return;
+      }
 
-  let snap;
-  try {
-    snap = await db.collection('carts')
-      .orderBy('createdAt', 'desc')
-      .get();
-  } catch (e) {
-    list.innerHTML = '❌ خطأ في القراءة من Firestore:<br>' + e;
-    return;
+      const orders = [];
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        orders.push(data);
+        const div = document.createElement('div');
+        div.className = 'order';
+        div.id = doc.id;
+
+        let itemsText = '';
+        if(data.items && data.items.length){
+          data.items.forEach(item => {
+            itemsText += ${item.name} - ${item.qty} × ${item.price}\n;
+          });
+        }
+
+        div.innerHTML = `
+          <div><strong>الاسم:</strong> ${data.name || '-'}</div>
+          <div><strong>الهاتف:</strong> ${data.phone || '-'}</div>
+          <div><strong>العنوان:</strong> ${data.address || '-'}</div>
+          <div><strong>الحالة:</strong> ${data.status || 'new'}</div>
+          <div><strong>السلة:</strong><pre>${itemsText}</pre></div>
+          <button onclick="updateStatus('${doc.id}')">تغيير الحالة</button>
+          <button onclick="deleteOrder('${doc.id}')">حذف الطلب</button>
+        `;
+
+        container.appendChild(div);
+      });
+
+      updateCounters(orders);
+
+    } catch(err){
+      console.error(err);
+      container.innerText = 'حدث خطأ أثناء تحميل الطلبات';
+      updateCounters([]);
+    }
   }
 
-  list.innerHTML = '';
+  // ======== Update Counters ========
+  function updateCounters(orders) {
+    const total = orders.length;
+    const newCount = orders.filter(o => o.status === 'new').length;
+    const orderedCount = orders.filter(o => o.status === 'ordered').length;
 
-  snap.forEach(doc => {
-    const data = doc.data();
-    const div = document.createElement('div');
+    document.getElementById('total-count').innerText = الكل: ${total};
+    document.getElementById('new-count').innerText = جديد: ${newCount};
+    document.getElementById('ordered-count').innerText = تم الطلب: ${orderedCount};
+  }
 
-    div.innerHTML = `
-      <strong>${data.name || 'زائر'}</strong> — ${data.phone || ''} <br>
-      <small>${data.address || ''}</small><br>
-      <small>${data.createdAt ? data.createdAt.toDate() : ''}</small>
-      <div>
-        <button onclick="viewOrder('${doc.id}')">عرض السلة</button>
-        <button onclick="setStatus('${doc.id}','processing')">قيد التنفيذ</button>
-        <button onclick="setStatus('${doc.id}','done')">تم</button>
-      </div>
-      <hr>
-    `;
+  // ======== Update Status ========
+  async function updateStatus(orderId){
+    try {
+      const docRef = db.collection('carts').doc(orderId);
+      const doc = await docRef.get();
+      if(!doc.exists) return alert('الطلب غير موجود');
 
-    list.appendChild(div);
+      const currentStatus = doc.data().status || 'new';
+      const newStatus = currentStatus === 'new' ? 'ordered' : 'new';
+      await docRef.update({status: newStatus, updatedAt: firebase.firestore.FieldValue.serverTimestamp()});
+      loadOrders(currentFilter);
+    } catch(err){
+      console.error(err);
+      alert('حدث خطأ أثناء تغيير الحالة');
+    }
+  }
+
+  // ======== Delete Order ========
+  async function deleteOrder(orderId){
+    if(!confirm('هل أنت متأكد من حذف هذا الطلب؟')) return;
+    try {
+      await db.collection('carts').doc(orderId).delete();
+      loadOrders(currentFilter);
+    } catch(err){
+      console.error(err);
+      alert('حدث خطأ أثناء حذف الطلب');
+    }
+  }
+
+  // ======== Filter Event ========
+  document.getElementById('status-filter').addEventListener('change', e => {
+    loadOrders(e.target.value);
   });
-}
 
-// عرض طلب
-window.viewOrder = async function(id) {
-  const doc = await db.collection('carts').doc(id).get();
-  if (!doc.exists) return alert("الطلب غير موجود");
-
-  const data = doc.data();
-  let html = `
-    <h3>طلب ${data.name}</h3>
-    <p>هاتف: ${data.phone}<br>عنوان: ${data.address}</p>
-    <ul>
-  `;
-
-  data.items.forEach(i => {
-    html += <li>${i.name} — ${i.qty} × ${i.price}</li>;
+  // ======== DOM Ready ========
+  document.addEventListener('DOMContentLoaded', () => {
+    loadOrders();
+    // ===== تحديث تلقائي كل ثانيتين =====
+    setInterval(() => loadOrders(currentFilter), 2000);
   });
-
-  html += </ul><p>الحالة: ${data.status || "new"}</p>;
-
-  const w = window.open("", "_blank");
-  w.document.write(html);
-};
-
-// تغيير حالة الطلب
-window.setStatus = async function(id, status) {
-  await db.collection('carts').doc(id).update({ status });
-  alert("تم التحديث");
-  loadOrders();
-};
-
-document.addEventListener("DOMContentLoaded", loadOrders);
 </script>
 
 </body>
