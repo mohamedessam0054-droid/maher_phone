@@ -1,0 +1,22 @@
+body {
+  font-family: Arial, sans-serif;
+  margin: 20px;
+}
+h1, h2 {
+  color: #333;
+}
+#products-container div, #cart-container div {
+  border: 1px solid #ccc;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+img {
+  display: block;
+  margin-top: 5px;
+  width: 150px;
+}
+button {
+  margin-top: 5px;
+  padding: 5px 10px;
+  cursor: pointer;
+}
