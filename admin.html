@@ -163,3 +163,68 @@
 
 </body>
 </html>
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>لوحة تحكم Maher</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>لوحة التحكم - إضافة منتجات</h1>
+
+  <form id="product-form">
+    <label>اسم المنتج:</label><br>
+    <input type="text" id="name" required><br><br>
+
+    <label>السعر:</label><br>
+    <input type="number" id="price" required><br><br>
+
+    <label>الوصف:</label><br>
+    <textarea id="description" required></textarea><br><br>
+
+    <label>رابط الصورة:</label><br>
+    <input type="text" id="image" required><br><br>
+
+    <button type="submit">إضافة المنتج</button>
+  </form>
+
+  <div id="status"></div>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+
+  <!-- Firebase Config -->
+  <script src="firebaseConfig.js"></script>
+
+  <!-- Admin JS -->
+  <script>
+    const form = document.getElementById('product-form');
+    const status = document.getElementById('status');
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const name = document.getElementById('name').value;
+      const price = parseInt(document.getElementById('price').value);
+      const description = document.getElementById('description').value;
+      const image = document.getElementById('image').value;
+
+      db.collection('products').add({
+        name,
+        price,
+        description,
+        image
+      })
+      .then(() => {
+        status.textContent = "تم إضافة المنتج بنجاح!";
+        form.reset();
+      })
+      .catch(err => {
+        status.textContent = "حدث خطأ: " + err;
+      });
+    });
+  </script>
+</body>
+</html>
+
