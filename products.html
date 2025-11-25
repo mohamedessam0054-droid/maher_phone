@@ -1,30 +1,99 @@
-<!DOCTYPE html>
-<html>
-<head><title>المنتجات</title></head>
-<body>
-<h1>المتجر</h1>
-<div id="products-list"></div>
 
-<script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-firestore-compat.js"></script>
-<script src="cart.js"></script> <!-- اربطه هنا -->
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>المنتجات</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #f1f1f1; }
+        h1 { text-align: center; margin-bottom: 25px; }
+        .product {
+            background: #fff;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 10px;
+            box-shadow: 0 0 8px rgba(0,0,0,0.1);
+        }
+        .product img {
+            width: 100%;
+            height: 220px;
+            object-fit: contain;
+            border-radius: 8px;
+        }
+        .btn {
+            background: #000;
+            color: #fff;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .btn:hover { opacity: 0.85; }
+    </style>
+</head>
+
+<body>
+
+<h1>جميع المنتجات</h1>
+<div id="products-list">جارٍ التحميل...</div>
+
+<!-- Firebase -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.6.1/firebase-app-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.6.1/firebase-firestore-compat.min.js"></script>
 
 <script>
-const firebaseConfig = {apiKey:"AIzaSyBt90XB3t9_MLH8-73wcQpE7fm65Le06FE",authDomain:"maher-phone.firebaseapp.com",projectId:"maher-phone",storageBucket:"maher-phone.firebasestorage.app",messagingSenderId:"759903479842",appId:"1:759903479842:web:25c32cd6034b413dc4027b",measurementId:"G-YV7TS3LDDW"};
+// إعداد Firebase مرة واحدة
+const firebaseConfig = {
+  apiKey: "AIzaSyBt90XB3t9_MLH8-73wcQpE7fm65Le06FE",
+  authDomain: "maher-phone.firebaseapp.com",
+  projectId: "maher-phone",
+  storageBucket: "maher-phone.firebasestorage.app",
+  messagingSenderId: "759903680635",
+  appId: "1:759903680635:web:xxxxxxxxxxxx"
+};
+
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-const list=document.getElementById('products-list');
+const list = document.getElementById("products-list");
 
-db.collection('products').onSnapshot(snapshot=>{
-  list.innerHTML='';
-  snapshot.forEach(doc=>{
-    const data=doc.data();
-    const el=document.createElement('div');
-    el.innerHTML=`${data.name} - ${data.price} جنيه <button onclick='addToCart({id:"${doc.id}",name:"${data.name}",price:${data.price},qty:1})'>أضف للسلة</button>`;
-    list.appendChild(el);
-  });
+// إضافة للسلة (LocalStorage)
+function addToCart(product) {
+    let cart = JSON.parse(localStorage.getItem("cart") || "[]");
+    cart.push(product);
+    localStorage.setItem("cart", JSON.stringify(cart));
+    alert("تمت إضافة المنتج إلى السلة");
+}
+
+// تحميل المنتجات من Firestore
+db.collection("products").onSnapshot(snapshot => {
+    list.innerHTML = "";
+
+    if (snapshot.empty) {
+        list.innerHTML = "<p class='text-center'>لا توجد منتجات.</p>";
+        return;
+    }
+
+    snapshot.forEach(doc => {
+        const data = doc.data();
+
+        list.innerHTML += `
+            <div class="product">
+                <img src="${data.img || 'https://via.placeholder.com/300'}" alt="${data.name}">
+                <h3>${data.name}</h3>
+                <p><strong>${data.price}</strong> جنيه</p>
+                <button class="btn" 
+                    onclick='addToCart({id: "${doc.id}", name: "${data.name}", price: ${data.price}, img: "${data.img || ""}"})'>
+                    أضف للسلة
+                </button>
+            </div>
+        `;
+    });
 });
 </script>
+
 </body>
 </html>
