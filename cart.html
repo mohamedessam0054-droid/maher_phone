@@ -2,14 +2,20 @@
 <html lang="ar">
 <head>
   <meta charset="UTF-8">
-  <title>سلة التسوق</title>
+  <title>سلة التسوق المتكاملة</title>
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; }
+    body { font-family: Arial, sans-serif; padding: 20px; direction: rtl; }
+    .product { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; max-width: 300px; }
+    .product button { margin-top: 5px; padding: 5px 10px; cursor: pointer; }
     #cart-items div { margin-bottom: 5px; }
     input, button { margin: 5px 0; padding: 8px; width: 100%; max-width: 300px; }
+    h1,h2 { margin-top: 20px; }
   </style>
 </head>
 <body>
+
+<h1>المنتجات</h1>
+<div id="products-list"></div>
 
 <h1>سلة التسوق</h1>
 <div id="cart-items">جارٍ تحميل السلة...</div>
@@ -48,14 +54,58 @@
   function getCart() { return JSON.parse(localStorage.getItem('cart-' + guestId) || '[]'); }
   function saveCart(items) { localStorage.setItem('cart-' + guestId, JSON.stringify(items)); }
 
+  // ======== Products List ========
+  const products = [
+    {id:'p1', name:'موبايل', price:2000},
+    {id:'p2', name:'سماعة', price:500},
+    {id:'p3', name:'شاحن', price:150},
+    {id:'p4', name:'غطاء حماية', price:100}
+  ];
+
+  function renderProducts() {
+    const container = document.getElementById('products-list');
+    container.innerHTML = '';
+    products.forEach(p => {
+      const el = document.createElement('div');
+      el.className = 'product';
+      el.innerHTML = <strong>${p.name}</strong><br>السعر: ${p.price};
+      const btn = document.createElement('button');
+      btn.innerText = 'أضف للسلة';
+      btn.addEventListener('click', () => addToCart({...p, qty:1}));
+      el.appendChild(btn);
+      container.appendChild(el);
+    });
+  }
+
   // ======== Cart Functions ========
-  function addToCart(product) {
+  async function addToCart(product) {
     const cart = getCart();
     const found = cart.find(p => p.id === product.id);
     if (found) found.qty += product.qty;
     else cart.push(product);
+
     saveCart(cart);
     renderCart();
+
+    try {
+      const docRef = db.collection('carts').doc(guestId);
+      const docSnap = await docRef.get();
+      if(docSnap.exists){
+        await docRef.update({
+          items: firebase.firestore.FieldValue.arrayUnion(product),
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      } else {
+        await docRef.set({
+          guestId,
+          items: [product],
+          status: 'new',
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      }
+    } catch (err) {
+      console.error('خطأ أثناء إضافة المنتج للـ Firestore:', err);
+    }
   }
 
   function renderCart() {
@@ -76,14 +126,13 @@
     if (!cart.length) { alert('السلة فاضية'); return; }
 
     try {
-      await db.collection('carts').doc(guestId).set({
-        guestId,
-        items: cart,
+      const docRef = db.collection('carts').doc(guestId);
+      await docRef.update({
         name,
         phone,
         address,
-        status: 'new',
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        status: 'ordered',
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       });
 
       let text = طلب جديد من ${name}%0Aرقم: ${phone}%0Aعنوان: ${address}%0Aسلة:%0A;
@@ -102,6 +151,7 @@
 
   // ======== DOM Ready ========
   document.addEventListener('DOMContentLoaded', () => {
+    renderProducts();
     renderCart();
     const checkoutForm = document.getElementById('checkout-form');
     if (checkoutForm) {
@@ -114,11 +164,6 @@
       });
     }
   });
-
-  // ======== Example: Adding Products ========
-  // استخدم هذا الكود لاختبار إضافة منتجات
-  // addToCart({id:'p1', name:'موبايل', price:2000, qty:1});
-  // addToCart({id:'p2', name:'سماعة', price:500, qty:2});
 </script>
 
 </body>
