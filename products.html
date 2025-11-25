@@ -1,101 +1,202 @@
-
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar">
 <head>
-    <meta charset="UTF-8">
-    <title>المنتجات</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-
-    <style>
-        body { font-family: sans-serif; padding: 20px; background: #f1f1f1; }
-        h1 { text-align: center; margin-bottom: 25px; }
-        .product {
-            background: #fff;
-            padding: 15px;
-            margin-bottom: 15px;
-            border-radius: 10px;
-            box-shadow: 0 0 8px rgba(0,0,0,0.1);
-        }
-        .product img {
-            width: 100%;
-            height: 220px;
-            object-fit: contain;
-            border-radius: 8px;
-        }
-        .btn {
-            background: #000;
-            color: #fff;
-            border: none;
-            padding: 8px 14px;
-            border-radius: 6px;
-            cursor: pointer;
-            margin-top: 10px;
-        }
-        .btn:hover { opacity: 0.85; }
-    </style>
+  <meta charset="UTF-8">
+  <title>لوحة تحكم الطلبات</title>
+  <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
+<h1>لوحة التحكم - الطلبات</h1>
 
-<h1>جميع المنتجات</h1>
-<div id="products-list">جارٍ التحميل...</div>
+<div class="counters">
+  <span id="total-count">الكل: 0</span>
+  <span id="new-count">جديد: 0</span>
+  <span id="ordered-count">تم الطلب: 0</span>
+</div>
+
+<div class="filter">
+  <label>فلتر حسب الحالة: </label>
+  <select id="status-filter">
+    <option value="all">الكل</option>
+    <option value="new">جديد</option>
+    <option value="ordered">تم الطلب</option>
+  </select>
+</div>
+
+<div id="orders-list">جارٍ تحميل الطلبات...</div>
 
 <!-- Firebase -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.6.1/firebase-app-compat.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.6.1/firebase-firestore-compat.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-firestore-compat.js"></script>
+<script src="firebaseConfig.js"></script>
 
 <script>
-// إعداد Firebase مرة واحدة
-cconst firebaseConfig = {
-  apiKey: "AIzaSyClVoFpPLnIeGa9yOHY45JE2FG7DHxX3SQ",
-  authDomain: "maherphpne.firebaseapp.com",
-  projectId: "maherphpne",
-  storageBucket: "maherphpne.firebasestorage.app",
-  messagingSenderId: "82850236630",
-  appId: "1:82850236630:web:618f7dc8c6cc65e20ca177",
-  measurementId: "G-LSBKJB470L"
-};
+let currentFilter = 'all';
 
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
+// جلب الطلبات
+async function loadOrders(filter='all') {
+  currentFilter = filter;
+  const container = document.getElementById('orders-list');
+  container.innerHTML = '';
+  try {
+    let query = db.collection('carts').orderBy('createdAt','desc');
+    if(filter !== 'all') query = query.where('status','==',filter);
 
-const list = document.getElementById("products-list");
-
-// إضافة للسلة (LocalStorage)
-function addToCart(product) {
-    let cart = JSON.parse(localStorage.getItem("cart") || "[]");
-    cart.push(product);
-    localStorage.setItem("cart", JSON.stringify(cart));
-    alert("تمت إضافة المنتج إلى السلة");
-}
-
-// تحميل المنتجات من Firestore
-db.collection("products").onSnapshot(snapshot => {
-    list.innerHTML = "";
-
-    if (snapshot.empty) {
-        list.innerHTML = "<p class='text-center'>لا توجد منتجات.</p>";
-        return;
+    const snapshot = await query.get();
+    if(snapshot.empty){
+      container.innerText = 'لا توجد طلبات حالياً';
+      updateCounters([]);
+      return;
     }
 
+    const orders = [];
     snapshot.forEach(doc => {
-        const data = doc.data();
+      const data = doc.data();
+      orders.push(data);
+      const div = document.createElement('div');
+      div.className = 'order';
+      div.id = doc.id;
 
-        list.innerHTML += `
-            <div class="product">
-                <img src="${data.img || 'https://via.placeholder.com/300'}" alt="${data.name}">
-                <h3>${data.name}</h3>
-                <p><strong>${data.price}</strong> جنيه</p>
-                <button class="btn" 
-                    onclick='addToCart({id: "${doc.id}", name: "${data.name}", price: ${data.price}, img: "${data.img || ""}"})'>
-                    أضف للسلة
-                </button>
-            </div>
-        `;
+      let itemsText = '';
+      if(data.items && data.items.length){
+        data.items.forEach(item => {
+          itemsText += ${item.name} - ${item.qty} × ${item.price}\n;
+        });
+      }
+
+      div.innerHTML = `
+        <div><strong>الاسم:</strong> ${data.name || '-'}</div>
+        <div><strong>الهاتف:</strong> ${data.phone || '-'}</div>
+        <div><strong>العنوان:</strong> ${data.address || '-'}</div>
+        <div><strong>الحالة:</strong> ${data.status || 'new'}</div>
+        <div><strong>السلة:</strong><pre>${itemsText}</pre></div>
+        <button onclick="updateStatus('${doc.id}')">تغيير الحالة</button>
+        <button onclick="deleteOrder('${doc.id}')">حذف الطلب</button>
+      `;
+      container.appendChild(div);
     });
+
+    updateCounters(orders);
+
+  } catch(err){
+    console.error(err);
+    container.innerText = 'حدث خطأ أثناء تحميل الطلبات';
+    updateCounters([]);
+  }
+}
+
+// تحديث العدادات
+function updateCounters(orders) {
+  const total = orders.length;
+  const newCount = orders.filter(o => o.status === 'new').length;
+  const orderedCount = orders.filter(o => o.status === 'ordered').length;
+
+  document.getElementById('total-count').innerText = الكل: ${total};
+  document.getElementById('new-count').innerText = جديد: ${newCount};
+  document.getElementById('ordered-count').innerText = تم الطلب: ${orderedCount};
+}
+
+// تغيير الحالة
+async function updateStatus(orderId){
+  try {
+    const docRef = db.collection('carts').doc(orderId);
+    const doc = await docRef.get();
+    if(!doc.exists) return alert('الطلب غير موجود');
+
+    const currentStatus = doc.data().status || 'new';
+    const newStatus = currentStatus === 'new' ? 'ordered' : 'new';
+    await docRef.update({status: newStatus, updatedAt: firebase.firestore.FieldValue.serverTimestamp()});
+    loadOrders(currentFilter);
+  } catch(err){
+    console.error(err);
+    alert('حدث خطأ أثناء تغيير الحالة');
+  }
+}
+
+// حذف الطلب
+async function deleteOrder(orderId){
+  if(!confirm('هل أنت متأكد من حذف هذا الطلب؟')) return;
+  try {
+    await db.collection('carts').doc(orderId).delete();
+    loadOrders(currentFilter);
+  } catch(err){
+    console.error(err);
+    alert('حدث خطأ أثناء حذف الطلب');
+  }
+}
+
+// فلتر
+document.getElementById('status-filter').addEventListener('change', e => {
+  loadOrders(e.target.value);
+});
+
+// تحميل أولي + تحديث تلقائي
+document.addEventListener('DOMContentLoaded', () => {
+  loadOrders();
+  setInterval(() => loadOrders(currentFilter), 2000);
 });
 </script>
-
 </body>
 </html>
+لقد أرسلت
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>لوحة تحكم Maher</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<h1>لوحة التحكم - إضافة منتجات</h1>
 
+<form id="product-form">
+  <label>اسم المنتج:</label><br>
+  <input type="text" id="name" required><br><br>
+
+  <label>السعر:</label><br>
+  <input type="number" id="price" required><br><br>
+
+  <label>الوصف:</label><br>
+  <textarea id="description" required></textarea><br><br>
+
+  <label>رابط الصورة:</label><br>
+  <input type="text" id="image" required><br><br>
+
+  <button type="submit">إضافة المنتج</button>
+</form>
+
+<div id="status"></div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+<script src="firebaseConfig.js"></script>
+
+<script>
+const form = document.getElementById('product-form');
+const status = document.getElementById('status');
+
+form.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const name = document.getElementById('name').value;
+  const price = parseInt(document.getElementById('price').value);
+  const description = document.getElementById('description').value;
+  const image = document.getElementById('image').value;
+
+  db.collection('products').add({
+    name,
+    price,
+    description,
+    image
+  })
+  .then(() => {
+    status.textContent = "تم إضافة المنتج بنجاح!";
+    form.reset();
+  })
+  .catch(err => {
+    status.textContent = "حدث خطأ: " + err;
+  });
+});
+</script>
+</body>
+</html>
