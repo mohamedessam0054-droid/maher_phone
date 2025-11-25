@@ -1,6 +1,33 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>سلة التسوق</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    #cart-items div { margin-bottom: 5px; }
+    input, button { margin: 5px 0; padding: 8px; width: 100%; max-width: 300px; }
+  </style>
+</head>
+<body>
+
+<h1>سلة التسوق</h1>
+<div id="cart-items">جارٍ تحميل السلة...</div>
+
+<h2>Checkout</h2>
+<form id="checkout-form">
+  <input type="text" name="name" placeholder="الاسم" required>
+  <input type="tel" name="phone" placeholder="رقم الهاتف" required>
+  <input type="text" name="address" placeholder="العنوان" required>
+  <button type="submit">إرسال الطلب</button>
+</form>
+
+<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-firestore-compat.js"></script>
+
 <script>
+  // ======== Firebase Config ========
   const firebaseConfig = {
     apiKey: "AIzaSyBt90XB3t9_MLH8-73wcQpE7fm65Le06FE",
     authDomain: "maher-phone.firebaseapp.com",
@@ -13,65 +40,86 @@
   firebase.initializeApp(firebaseConfig);
   const db = firebase.firestore();
 
-  function genId(){return 'id-'+Date.now()+'-'+Math.random().toString(36).slice(2,9);}
+  // ======== Helpers ========
+  function genId() { return 'id-' + Date.now() + '-' + Math.random().toString(36).slice(2, 9); }
   let guestId = localStorage.getItem('guestId');
-  if(!guestId){guestId=genId();localStorage.setItem('guestId',guestId);}
-  function getCart(){return JSON.parse(localStorage.getItem('cart-'+guestId)||'[]');}
-  function saveCart(items){localStorage.setItem('cart-'+guestId,JSON.stringify(items));}
+  if (!guestId) { guestId = genId(); localStorage.setItem('guestId', guestId); }
 
-  function addToCart(product){
-    const cart=getCart();
-    const found=cart.find(p=>p.id===product.id);
-    if(found)found.qty+=product.qty;
+  function getCart() { return JSON.parse(localStorage.getItem('cart-' + guestId) || '[]'); }
+  function saveCart(items) { localStorage.setItem('cart-' + guestId, JSON.stringify(items)); }
+
+  // ======== Cart Functions ========
+  function addToCart(product) {
+    const cart = getCart();
+    const found = cart.find(p => p.id === product.id);
+    if (found) found.qty += product.qty;
     else cart.push(product);
     saveCart(cart);
     renderCart();
   }
 
-  function renderCart(){
-    const cart=getCart();
-    const container=document.getElementById('cart-items');
-    if(!container)return;
-    container.innerHTML='';
-    cart.forEach(item=>{
-      const el=document.createElement('div');
-      el.innerText=`${item.name} - ${item.qty} × ${item.price}`;
+  function renderCart() {
+    const cart = getCart();
+    const container = document.getElementById('cart-items');
+    if (!container) return;
+    container.innerHTML = '';
+    cart.forEach(item => {
+      const el = document.createElement('div');
+      el.innerText = ${item.name} - ${item.qty} × ${item.price};
       container.appendChild(el);
     });
+    if (!cart.length) container.innerText = 'السلة فارغة';
   }
 
-  async function checkout(name,phone,address){
-    const cart=getCart();
-    if(!cart.length){alert('السلة فاضية');return;}
-    await db.collection('carts').doc(guestId).set({
-      guestId,
-      items: cart,
-      name,
-      phone,
-      address,
-      status:'new',
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    // افتح واتساب مع بيانات الطلب
-    let text=`طلب جديد من ${name}%0Aرقم: ${phone}%0Aعنوان: ${address}%0Aسلة:%0A`;
-    cart.forEach(i=>{text+=`${i.name} - ${i.qty} × ${i.price}%0A`;});
-    window.open(https://wa.me/201110112115?text=${text},'_blank');
-    localStorage.removeItem('cart-'+guestId);
-    renderCart();
-    alert('تم إرسال الطلب! سيتم فتح واتساب لإكمال التواصل.');
+  async function checkout(name, phone, address) {
+    const cart = getCart();
+    if (!cart.length) { alert('السلة فاضية'); return; }
+
+    try {
+      await db.collection('carts').doc(guestId).set({
+        guestId,
+        items: cart,
+        name,
+        phone,
+        address,
+        status: 'new',
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      let text = طلب جديد من ${name}%0Aرقم: ${phone}%0Aعنوان: ${address}%0Aسلة:%0A;
+      cart.forEach(i => { text += ${i.name} - ${i.qty} × ${i.price}%0A; });
+
+      window.open(https://wa.me/201110112115?text=${text}, '_blank');
+
+      localStorage.removeItem('cart-' + guestId);
+      renderCart();
+      alert('تم إرسال الطلب! سيتم فتح واتساب لإكمال التواصل.');
+    } catch (err) {
+      console.error(err);
+      alert('حصل خطأ أثناء إرسال الطلب.');
+    }
   }
 
-  document.addEventListener('DOMContentLoaded',()=>{
+  // ======== DOM Ready ========
+  document.addEventListener('DOMContentLoaded', () => {
     renderCart();
-    const checkoutForm=document.getElementById('checkout-form');
-    if(checkoutForm){
-      checkoutForm.addEventListener('submit',(e)=>{
+    const checkoutForm = document.getElementById('checkout-form');
+    if (checkoutForm) {
+      checkoutForm.addEventListener('submit', e => {
         e.preventDefault();
-        const name=checkoutForm.querySelector('[name=name]').value;
-        const phone=checkoutForm.querySelector('[name=phone]').value;
-        const address=checkoutForm.querySelector('[name=address]').value;
-        checkout(name,phone,address).catch(err=>{console.error(err);alert('حصل خطأ');});
+        const name = checkoutForm.querySelector('[name=name]').value;
+        const phone = checkoutForm.querySelector('[name=phone]').value;
+        const address = checkoutForm.querySelector('[name=address]').value;
+        checkout(name, phone, address);
       });
     }
   });
+
+  // ======== Example: Adding Products ========
+  // استخدم هذا الكود لاختبار إضافة منتجات
+  // addToCart({id:'p1', name:'موبايل', price:2000, qty:1});
+  // addToCart({id:'p2', name:'سماعة', price:500, qty:2});
 </script>
+
+</body>
+</html>
