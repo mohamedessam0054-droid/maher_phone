@@ -1,20 +1,17 @@
-
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="UTF-8">
+<meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>متجر Maher</title>
 
 <style>
 body {
-    font-family: Arial, sans-serif;
+    font-family: Arial;
     padding: 20px;
     background: #f4f4f4;
 }
-nav {
-    margin-bottom: 20px;
-}
+nav { margin-bottom: 20px; }
 nav a {
     margin-left: 15px;
     text-decoration: none;
@@ -43,75 +40,54 @@ button {
 <h1>متجر Maher</h1>
 
 <nav>
-    <a href="#" onclick="loadProducts()">المنتجات</a>
-    <a href="#" onclick="loadCart()">السلة</a>
+    <a href="#" onclick="showProducts()">المنتجات</a>
+    <a href="#" onclick="showCart()">السلة</a>
 </nav>
 
 <div id="content">جارٍ التحميل...</div>
 
-<!-- Firebase -->
-<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
-
 <script>
-// ======== Firebase Config ==========
-const firebaseConfig = {
-    apiKey: "AIzaSyBt90XB3t9_MLH8-73wcQpE7fm65Le06FE",
-    authDomain: "maher-phone.firebaseapp.com",
-    projectId: "maher-phone",
-    storageBucket: "maher-phone.firebasestorage.app",
-    messagingSenderId: "75990321121",
-    appId: "1:75990321121:web:12345"
-};
+// ========== المنتجات (نسخة بدون Firebase) ==========
+const products = [
+    { id: 1, name: "ايفون 11", price: 12000 },
+    { id: 2, name: "سامسونج A24", price: 9500 },
+    { id: 3, name: "شاومي Note 12", price: 8200 }
+];
 
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-
-// ======== Load Products ==========
-async function loadProducts() {
-    document.getElementById("content").innerHTML = "جارٍ التحميل...";
-
-    const productsRef = await db.collection("products").get();
-
-    if (productsRef.empty) {
-        document.getElementById("content").innerHTML = "لا يوجد منتجات.";
-        return;
-    }
-
+// ========== عرض المنتجات ==========
+function showProducts() {
     let html = "";
-    productsRef.forEach(doc => {
-        let p = doc.data();
+    products.forEach(p => {
         html += `
             <div class="product">
                 <h3>${p.name}</h3>
                 <p>السعر: ${p.price} جنيه</p>
-                <button onclick="addToCart('${doc.id}', '${p.name}', ${p.price})">إضافة للسلة</button>
+                <button onclick="addToCart(${p.id})">إضافة للسلة</button>
             </div>
         `;
     });
-
     document.getElementById("content").innerHTML = html;
 }
 
-// ======== Add to Cart ==========
-function addToCart(id, name, price) {
-    let cart = JSON.parse(localStorage.getItem('cart') || "[]");
-    cart.push({id, name, price});
-    localStorage.setItem('cart', JSON.stringify(cart));
-    alert("تمت الإضافة إلى السلة");
+// ========== إضافة للسلة ==========
+function addToCart(id) {
+    let cart = JSON.parse(localStorage.getItem("cart") || "[]");
+    const product = products.find(p => p.id === id);
+    cart.push(product);
+    localStorage.setItem("cart", JSON.stringify(cart));
+    alert("تمت الإضافة للسلة");
 }
 
-// ======== Load Cart ==========
-function loadCart() {
-    let cart = JSON.parse(localStorage.getItem('cart') || "[]");
-
+// ========== عرض السلة ==========
+function showCart() {
+    let cart = JSON.parse(localStorage.getItem("cart") || "[]");
     if (cart.length === 0) {
         document.getElementById("content").innerHTML = "السلة فارغة";
         return;
     }
 
     let html = "<h2>السلة</h2>";
-    cart.forEach((item, index) => {
+    cart.forEach(item => {
         html += `
             <div class="product">
                 <h3>${item.name}</h3>
@@ -119,12 +95,11 @@ function loadCart() {
             </div>
         `;
     });
-
     document.getElementById("content").innerHTML = html;
 }
 
-// فتح المنتجات تلقائي عند الدخول
-loadProducts();
+// افتح المنتجات تلقائي عند الدخول
+showProducts();
 </script>
 
 </body>
